@@ -1,5 +1,5 @@
 /*
- *	Userspace trace_printk module.
+ * Userspace trace_printk module.
  */
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -8,20 +8,20 @@
 #include <linux/miscdevice.h>
 
 static ssize_t trace_printk_user_write(struct file *file,
-				       char const __user *buf, size_t count,
+				       const char __user *buf, size_t count,
 				       loff_t *ppos)
 {
+	ssize_t len;
 	char input[1024];
 
-	if (count <= 0 || count >= sizeof(input) - 1)
-		return -EINVAL;
+	len = simple_write_to_buffer(input, sizeof(input) - 1, ppos,
+		buf, count);
+	if (len > 0) {
+		input[len] = 0;
+		trace_printk("%s", input);
+	}
 
-	if (copy_from_user(input, buf, count))
-		return -EINVAL;
-
-	trace_printk("trace_printk_user: %.*s\n", (int)count, input);
-
-	return count;
+	return len;
 }
 
 static const struct file_operations trace_printk_user_fops = {
@@ -37,12 +37,9 @@ static struct miscdevice trace_printk_user_dev = {
 
 static int __init trace_printk_user_init(void)
 {
-	int ret;
-
 	pr_info("%s\n", __func__);
 
-	ret = misc_register(&trace_printk_user_dev);
-	return ret;
+	return misc_register(&trace_printk_user_dev);
 }
 
 static void __exit trace_printk_user_exit(void)
